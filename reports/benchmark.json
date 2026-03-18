@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-03-18T15:22:08.913Z",
+  "accuracy": {
+    "maxAbsError": 0.0044672996481360805,
+    "meanAbsError": 0.0023779697441547176,
+    "cases": [
+      {
+        "name": "Hull ATM call 6m 20%vol",
+        "computed": 4.7594229843523195,
+        "reference": 4.76,
+        "absErr": 0.0005770156476803123
+      },
+      {
+        "name": "Hull OTM put 6m 20%vol",
+        "computed": 2.814467299648136,
+        "reference": 2.81,
+        "absErr": 0.0044672996481360805
+      },
+      {
+        "name": "Hull ATM call 1y 30%vol",
+        "computed": 14.231244545520191,
+        "reference": 14.23,
+        "absErr": 0.0012445455201905986
+      },
+      {
+        "name": "Hull ATM put 1y 30%vol",
+        "computed": 9.35418699559159,
+        "reference": 9.35,
+        "absErr": 0.0041869955915903034
+      },
+      {
+        "name": "Deep ITM call",
+        "computed": 34.76925090823134,
+        "reference": 34.77,
+        "absErr": 0.0007490917686610032
+      },
+      {
+        "name": "Deep OTM call",
+        "computed": 0.7583187264934317,
+        "reference": 0.76,
+        "absErr": 0.001681273506568326
+      },
+      {
+        "name": "Short expiry ATM call",
+        "computed": 2.506620088051676,
+        "reference": 2.51,
+        "absErr": 0.003379911948323766
+      },
+      {
+        "name": "High vol call",
+        "computed": 21.792599335899553,
+        "reference": 21.79,
+        "absErr": 0.002599335899553523
+      },
+      {
+        "name": "Low rate put",
+        "computed": 7.438310444521328,
+        "reference": 7.44,
+        "absErr": 0.0016895554786726663
+      },
+      {
+        "name": "Hull near-zero vol call",
+        "computed": 9.633204672432171,
+        "reference": 9.63,
+        "absErr": 0.0032046724321705966
+      }
+    ]
+  },
+  "localLatencyMs": {
+    "p50": 0.004457999999999629,
+    "p95": 0.09808299999997416,
+    "p99": 0.15512499999999818
+  },
+  "httpLatencyMs": null
+}
