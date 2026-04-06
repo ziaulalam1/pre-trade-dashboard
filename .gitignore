@@ -4,3 +4,4 @@ dist/
 *.log
 INTERVIEW.md
 .npm-cache/
+.claude/
