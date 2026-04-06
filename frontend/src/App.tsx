@@ -20,34 +20,54 @@ interface OptionResult {
   rho: number;
 }
 
+// ── Black-Scholes Engine (inline — no backend needed) ────────────────────────
+
+function normCDF(x: number): number {
+  if (x < -8) return 0;
+  if (x >  8) return 1;
+  const a1 =  0.254829592, a2 = -0.284496736, a3 =  1.421413741;
+  const a4 = -1.453152027, a5 =  1.061405429, p  =  0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  const ax = Math.abs(x) / Math.SQRT2;
+  const t = 1 / (1 + p * ax);
+  const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-ax * ax);
+  return 0.5 * (1 + sign * y);
+}
+
+function normPDF(x: number): number {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+
+function priceOption(opt: OptionInput): OptionResult {
+  const { spot: S, strike: K, expiry: T, rate: r, vol: sig, type } = opt;
+  const sqrtT = Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (r + 0.5 * sig * sig) * T) / (sig * sqrtT);
+  const d2 = d1 - sig * sqrtT;
+  const df = Math.exp(-r * T);
+  const Nd1 = normCDF(d1), Nd2 = normCDF(d2);
+  const Nnd1 = normCDF(-d1), Nnd2 = normCDF(-d2);
+  const nd1 = normPDF(d1);
+  const isCall = type === "call";
+  const price = isCall ? S * Nd1 - K * df * Nd2 : K * df * Nnd2 - S * Nnd1;
+  const delta = isCall ? Nd1 : Nd1 - 1;
+  const gamma = nd1 / (S * sig * sqrtT);
+  const thetaAnnual = isCall
+    ? -(S * nd1 * sig) / (2 * sqrtT) - r * K * df * Nd2
+    : -(S * nd1 * sig) / (2 * sqrtT) + r * K * df * Nnd2;
+  const theta = thetaAnnual / 365;
+  const vega = S * nd1 * sqrtT / 100;
+  const rho = isCall ? K * T * df * Nd2 / 100 : -K * T * df * Nnd2 / 100;
+  return { price, delta, gamma, theta, vega, rho };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function fetchPrice(input: OptionInput): Promise<OptionResult | null> {
-  try {
-    const res = await fetch("/price", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return priceOption(input);
 }
 
 async function fetchChain(inputs: OptionInput[]): Promise<OptionResult[]> {
-  try {
-    const res = await fetch("/chain", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(inputs),
-    });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
+  return inputs.map(priceOption);
 }
 
 const fmt = (n: number, d = 4) => n.toFixed(d);
