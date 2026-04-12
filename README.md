@@ -20,6 +20,16 @@ The Black-Scholes engine is embedded directly in the frontend (no API calls), so
 - **Scenario Analysis** -- baseline vs stressed parameters with Greeks comparison
 - **P&L Attribution** -- decomposes price change into delta, gamma, and vega contributions
 
+## Real-Time Tick Stream
+
+The dashboard connects to a WebSocket tick server that emits simulated price ticks using geometric Brownian motion (GBM). When connected, the option chain grid updates spot price on every tick and reprices the full chain automatically. A green "LIVE" badge appears when the stream is active. Without the tick server, the dashboard falls back to manual input.
+
+```bash
+cd backend && npm run ticks   # ws://localhost:3002 — AAPL @ $100, 500ms ticks
+```
+
+The tick server supports configuration via environment variables: `TICK_SYMBOL`, `TICK_BASE`, `TICK_INTERVAL`, `TICK_PORT`.
+
 ## Invariants
 
 | Test | What it proves |
@@ -28,7 +38,7 @@ The Black-Scholes engine is embedded directly in the frontend (no API calls), so
 | Greeks bounds | Delta in [-1, 1], gamma non-negative, vega non-negative |
 | Edge conditions | Near-zero expiry and extreme vol produce finite, bounded outputs |
 
-13 tests passing, 10 benchmark scenarios.
+17 tests passing, 10 benchmark scenarios.
 
 ## Benchmark
 
@@ -37,7 +47,8 @@ The Black-Scholes engine is embedded directly in the frontend (no API calls), so
 ## Run It
 
 ```bash
-cd backend && npm install && npm test    # 13/13 pass
+cd backend && npm install && npm test    # 17/17 pass
+npm run ticks                            # tick server on ws://localhost:3002
 npm run benchmark                        # reports/benchmark.json + benchmark.png
 
 cd ../frontend && npm install && npm run dev   # localhost:5173
@@ -45,4 +56,4 @@ cd ../frontend && npm install && npm run dev   # localhost:5173
 
 ## Stack
 
-TypeScript, React, Vite, Node.js, Black-Scholes (Abramowitz & Stegun normCDF approximation)
+TypeScript, React, Vite, Node.js, WebSocket, Black-Scholes (Abramowitz & Stegun normCDF approximation)

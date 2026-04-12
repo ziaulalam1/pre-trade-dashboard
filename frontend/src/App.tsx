@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,52 @@ async function fetchChain(inputs: OptionInput[]): Promise<OptionResult[]> {
 }
 
 const fmt = (n: number, d = 4) => n.toFixed(d);
+
+// ── Tick Stream Hook ─────────────────────────────────────────────────────────
+
+const TICK_WS_URL = "ws://localhost:3002";
+
+interface Tick {
+  symbol: string;
+  price: number;
+  timestamp: string;
+}
+
+function useTickStream(): { tick: Tick | null; connected: boolean } {
+  const [tick, setTick] = useState<Tick | null>(null);
+  const [connected, setConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function connect() {
+      try {
+        const ws = new WebSocket(TICK_WS_URL);
+        wsRef.current = ws;
+
+        ws.onopen = () => setConnected(true);
+        ws.onclose = () => {
+          setConnected(false);
+          retryRef.current = setTimeout(connect, 3000);
+        };
+        ws.onerror = () => ws.close();
+        ws.onmessage = (e) => {
+          try { setTick(JSON.parse(e.data)); } catch {}
+        };
+      } catch {
+        retryRef.current = setTimeout(connect, 3000);
+      }
+    }
+
+    connect();
+    return () => {
+      wsRef.current?.close();
+      if (retryRef.current) clearTimeout(retryRef.current);
+    };
+  }, []);
+
+  return { tick, connected };
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -162,13 +208,20 @@ const styles: Record<string, React.CSSProperties> = {
 const STRIKES = [90, 95, 100, 105, 110];
 const EXPIRIES = [0.083, 0.25, 0.5, 1.0]; // ~1m, 3m, 6m, 1y
 
-function ChainPanel() {
+function ChainPanel({ liveTick, liveConnected }: { liveTick: Tick | null; liveConnected: boolean }) {
   const [spot, setSpot] = useState(100);
   const [vol, setVol] = useState(0.2);
   const [rate, setRate] = useState(0.05);
   const [optType, setOptType] = useState<"call" | "put">("call");
   const [grid, setGrid] = useState<(OptionResult | null)[][]>([]);
   const [loading, setLoading] = useState(false);
+
+  // update spot from live tick stream
+  useEffect(() => {
+    if (liveTick && liveConnected) {
+      setSpot(liveTick.price);
+    }
+  }, [liveTick, liveConnected]);
 
   const loadChain = useCallback(async () => {
     setLoading(true);
@@ -199,11 +252,25 @@ function ChainPanel() {
 
   return (
     <div style={styles.panel}>
-      <div style={styles.h2}>Option Chain Grid</div>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", ...styles.h2 }}>
+        Option Chain Grid
+        {liveConnected && (
+          <span style={{
+            fontSize: "10px",
+            background: "#238636",
+            color: "#fff",
+            padding: "2px 8px",
+            borderRadius: "10px",
+            fontWeight: "normal",
+          }}>
+            LIVE {liveTick?.symbol}
+          </span>
+        )}
+      </div>
       <div style={styles.inputRow}>
         <div style={styles.inputGroup}>
-          <span style={styles.inputLabel}>Spot</span>
-          <input style={styles.input} type="number" value={spot}
+          <span style={styles.inputLabel}>Spot{liveConnected ? " (live)" : ""}</span>
+          <input style={styles.input} type="number" value={Math.round(spot * 100) / 100}
             onChange={e => setSpot(+e.target.value)} />
         </div>
         <div style={styles.inputGroup}>
@@ -542,10 +609,12 @@ function PnlPanel() {
 // ── Root App ───────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { tick, connected } = useTickStream();
+
   return (
     <div style={styles.root}>
       <h1 style={styles.h1}>Pre-Trade Analytics Dashboard</h1>
-      <ChainPanel />
+      <ChainPanel liveTick={tick} liveConnected={connected} />
       <ScenarioPanel />
       <PnlPanel />
     </div>
